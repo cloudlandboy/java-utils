@@ -53,6 +53,7 @@ public class PageInfoHelper {
                     String column = StringUtils.isNotBlank(sortable.column()) ? sortable.column() : StringUtils.camelToUnderline(field.getName());
                     return new SortableFieldInfo(field, column, field.getName(), sortable.sortPriority());
                 }).flatMap(info -> {
+                    //将属性名和column都加入map，这样前端既可以传属性名也可以传列名
                     Map.Entry<String, SortableFieldInfo> propertyEntry = new AbstractMap.SimpleEntry<>(info.getProperty(), info);
                     return info.getColumn().equals(info.getProperty()) ?
                             Stream.of(propertyEntry) :

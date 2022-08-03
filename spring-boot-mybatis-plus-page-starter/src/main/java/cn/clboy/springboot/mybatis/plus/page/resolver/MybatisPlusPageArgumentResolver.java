@@ -53,10 +53,10 @@ public class MybatisPlusPageArgumentResolver implements HandlerMethodArgumentRes
     private static final long ALLOW_MAX_PAGE_SIZE = 1000L;
 
     /**
-     * 判断Controller是否包含page 参数
+     * 判断参数是不是Page类型
      *
      * @param parameter 参数
-     * @return 是否过滤
+     * @return 是否支持该参数
      */
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
@@ -64,13 +64,14 @@ public class MybatisPlusPageArgumentResolver implements HandlerMethodArgumentRes
     }
 
     /**
+     * 只支持查询GET请求,POST需要解析请求体
+     *
      * @param parameter     入参集合
      * @param mavContainer  model 和 view
      * @param webRequest    web相关
      * @param binderFactory 入参解析
      * @return 检查后新的page对象
      * <p>
-     * page 只支持查询 GET .如需解析POST获取请求报文体处理
      */
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
@@ -108,17 +109,20 @@ public class MybatisPlusPageArgumentResolver implements HandlerMethodArgumentRes
      * @since 1.0.0
      */
     private List<OrderItem> parseOrder(HttpServletRequest request, MethodParameter parameter) {
+        //从请求中获取升序和降序两个参数
         String[] ascending = request.getParameterValues(ASCENDING_PARAMETER_NAME);
         String[] descending = request.getParameterValues(DESCENDING_PARAMETER_NAME);
         if (ascending == null && descending == null) {
             return Collections.emptyList();
         }
-        // 获取目标类型
+        // 获取page泛型的类型
         Class<?> clazz = ResolvableType.forMethodParameter(parameter).getGeneric(0).resolve();
+        //获取泛型类中的可排序字段
         Map<String, SortableFieldInfo> sortableFieldInfo = PageInfoHelper.getSortableFieldInfo(clazz);
         if (CollectionUtils.isEmpty(sortableFieldInfo)) {
             return Collections.emptyList();
         }
+        //对两个排序参数处理。1.逗号拆分，2.过滤掉非可排序字段，3.去重，4.转换为OrderItem
         List<OrderItem> orderItemList = new ArrayList<>();
         Optional.ofNullable(ascending).ifPresent(s -> orderItemList.addAll(Arrays.stream(s)
                 .flatMap(s1 -> StringUtils.commaDelimitedListToSet(s1).stream())
@@ -132,6 +136,7 @@ public class MybatisPlusPageArgumentResolver implements HandlerMethodArgumentRes
                 .distinct()
                 .map(sc -> OrderItem.desc(sortableFieldInfo.get(sc).getColumn()))
                 .collect(Collectors.toList())));
+        //进行优先级排序
         orderItemList.sort(Comparator.comparingInt(o -> sortableFieldInfo.get(o.getColumn()).getSortPriority()));
         return orderItemList;
     }

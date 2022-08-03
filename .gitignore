@@ -33,4 +33,4 @@ build/
 .vscode/
 
 ### 测试mudule
-java-utils/*-test
+*-test/
